@@ -9,13 +9,20 @@ st.set_page_config(
     layout="centered"
 )
 
-# Initialize game state variables
-if 'secret_number' not in st.session_state:
-    st.session_state.secret_number = None
-if 'attempt_count' not in st.session_state:
-    st.session_state.attempt_count = 0
-if 'game_over' not in st.session_state:
-    st.session_state.game_over = True
+# Initialize ALL session state variables upfront
+session_state_defaults = {
+    'secret_number': None,
+    'attempt_count': 0,
+    'game_over': True,
+    'max_attempts': None,
+    'user_min': 1,
+    'user_max': 100,
+    'difficulty_level': 'Easy'
+}
+
+for key, value in session_state_defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 def start_new_game():
     """Reset all settings for a fresh game session"""
@@ -53,9 +60,9 @@ def check_guess(player_guess):
     else:
         # Provide directional feedback
         if player_guess < st.session_state.secret_number:
-            st.warning("📈 too low")
+            st.warning("📈 Try going higher!")
         else:
-            st.warning("📉 too higher")
+            st.warning("📉 Try going lower!")
         
         # Check attempt limit
         if st.session_state.max_attempts and st.session_state.attempt_count >= st.session_state.max_attempts:
@@ -70,20 +77,24 @@ with st.sidebar:
     st.subheader("Choose Number Range")
     col1, col2 = st.columns(2)
     with col1:
-        min_number = st.number_input("Minimum Number", value=1, key='user_min')
+        st.number_input("Minimum Number", 
+                      value=st.session_state.user_min,
+                      key='user_min')
     with col2:
-        max_number = st.number_input("Maximum Number", value=100, key='user_max')
+        st.number_input("Maximum Number", 
+                      value=st.session_state.user_max,
+                      key='user_max')
     
     # Difficulty level
-    difficulty = st.selectbox(
+    st.selectbox(
         "Select Challenge Level",
         options=['Easy', 'Medium', 'Hard'],
-        index=0,
+        index=['Easy', 'Medium', 'Hard'].index(st.session_state.difficulty_level),
         key='difficulty_level'
     )
     
     # New game button
-    if st.button(" Start New Game", use_container_width=True):
+    if st.button("🔄 Start New Game", use_container_width=True):
         start_new_game()
 
 # Main game interface
@@ -91,18 +102,20 @@ st.title("🔍 Number Detective")
 
 if not st.session_state.game_over:
     # Active game display
-    st.subheader(f"💡 Guess between {min_number} and {max_number}")
+    current_min = min(st.session_state.user_min, st.session_state.user_max)
+    current_max = max(st.session_state.user_min, st.session_state.user_max)
+    st.subheader(f"💡 Guess between {current_min} and {current_max}")
     
     # Guess input
     current_guess = st.number_input(
         "Enter your guess:",
-        min_value=min_number,
-        max_value=max_number,
+        min_value=current_min,
+        max_value=current_max,
         key="current_guess"
     )
     
     # Guess submission button
-    if st.button(" Check Guess", type="primary", use_container_width=True):
+    if st.button("✅ Check Guess", type="primary", use_container_width=True):
         check_guess(current_guess)
         
 else:
@@ -116,10 +129,11 @@ else:
         st.rerun()
 
 # Attempt counter display
+attempt_text = f"Attempts: {st.session_state.attempt_count}"
 if st.session_state.max_attempts:
-    attempt_text = f"Attempts: {st.session_state.attempt_count}/{st.session_state.max_attempts}"
+    attempt_text += f"/{st.session_state.max_attempts}"
 else:
-    attempt_text = f"Attempts: {st.session_state.attempt_count} (Unlimited)"
+    attempt_text += " (Unlimited)"
 st.caption(f"📊 {attempt_text}")
 
 # Help section
